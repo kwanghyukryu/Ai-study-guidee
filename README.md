@@ -1,182 +1,162 @@
-Study Assistant Web Application
-Overview
+# Study Assistant Web Application
 
-This project is a full-stack study assistant web application designed to help students generate study guides, practice material, and manage academic planning in one place. It combines an interactive React frontend with a Node.js and Express backend, integrates AI-generated study content, and supports features such as quizzes, flashcards, grade calculation, and a study planner.
+## Overview
 
-The application is modular, extensible, and built to function even without an active AI API key during development.
+This project is a full-stack study assistant web application designed to help students generate, practice, and organize academic content in one centralized platform. The application supports study guide generation from topics or PDFs, quiz-based practice, flashcards, performance analytics, academic planning, and grade calculation.
 
-Features
+The system uses a React frontend paired with a Node.js and Express backend. AI-powered content generation is supported, with a mock fallback so the application remains fully functional during development without an API key.
 
-Generate study guides from a topic or uploaded PDF
+---
 
-Preview and review generated study guides
+## System Architecture
 
-Practice quizzes based on generated content
+The application follows a client–server architecture:
 
-Track performance statistics and quiz attempts
+1. The React frontend provides an interactive interface for study creation, review, and planning.
+2. The backend exposes RESTful API endpoints for guide generation, quizzes, statistics, flashcards, and planner events.
+3. Study content is generated using an AI layer when configured.
+4. Generated content is stored in a database and retrieved for preview and practice.
+5. Quiz attempts and planner data are persisted and aggregated for dashboard insights.
 
-Create and review flashcards
+---
 
-Plan study sessions and academic events
+## Features
 
-Calculate weighted and percentage grades
+- Generate study guides from a topic or uploaded PDF
+- Preview and review generated study guides
+- Practice quizzes generated from study content
+- Track quiz attempts and performance statistics
+- Create and manage flashcards
+- Study planner with calendar-style events
+- Percentage and weighted grade calculator
+- Persistent history of generated guides
 
-Persistent history of generated guides
+---
 
-Tech Stack
-Frontend
+## Tech Stack
 
-React (Vite)
+Frontend:
+- React (Vite)
+- JSX
+- Tailwind CSS
+- React Hooks
 
-JSX component architecture
+Backend:
+- Node.js
+- Express
+- Prisma ORM
+- SQLite (development)
 
-Tailwind CSS styling
+AI and File Processing:
+- OpenAI Chat Completions API (optional)
+- Multer for file uploads
+- pdf-parse for PDF text extraction
 
-Client-side state management with hooks
+---
 
-Backend
+## Project Structure
 
-Node.js with Express
-
-Prisma ORM
-
-SQLite (development database)
-
-RESTful API design
-
-AI and File Processing
-
-OpenAI Chat Completions API (optional, with mock fallback)
-
-Multer for file uploads
-
-pdf-parse for PDF text extraction
-
-Project Structure
 client/
-├── App.jsx
-├── main.jsx
-├── index.js
-├── components/
-│   ├── EventForm.jsx
-│   ├── Flashcards.jsx
-│   ├── GradeCalculator.jsx
-│   ├── Planner.jsx
-│   ├── HistorySidebar.jsx
-│   ├── PdfGuideForm.jsx
-│   ├── Quiz.jsx
-│   ├── Stats.jsx
-│   ├── StudyGuideForm.jsx
-│   ├── StudyGuideView.jsx
-│   └── TopicGuideForm.jsx
+- App.jsx
+- main.jsx
+- index.js
+- components/
+  - EventForm.jsx
+  - Flashcards.jsx
+  - GradeCalculator.jsx
+  - Planner.jsx
+  - HistorySidebar.jsx
+  - PdfGuideForm.jsx
+  - Quiz.jsx
+  - Stats.jsx
+  - StudyGuideForm.jsx
+  - StudyGuideView.jsx
+  - TopicGuideForm.jsx
 
 server/
-├── src/
-│   ├── index.js
-│   ├── db.js
-│   ├── llm.js
-│   ├── pdf.js
-│   └── routes/
-│       ├── generate.js
-│       ├── generateFromPdf.js
-│       ├── guides.js
-│       ├── attempts.js
-│       ├── stats.js
-│       ├── flashcards.js
-│       └── events.js
+- src/
+  - index.js
+  - db.js
+  - llm.js
+  - pdf.js
+  - routes/
+    - generate.js
+    - generateFromPdf.js
+    - guides.js
+    - attempts.js
+    - stats.js
+    - flashcards.js
+    - events.js
 
-Application Flow
+---
 
-The user generates a study guide from a topic or PDF.
+## Application Flow
 
-The backend processes the request, optionally calling the OpenAI API.
+1. The user generates a study guide from a topic or PDF.
+2. The backend validates the request and generates content using the AI layer or a mock generator.
+3. Study guide content is stored as serialized JSON in the database.
+4. The frontend displays the guide for preview and practice.
+5. Quiz results are saved and aggregated into performance statistics.
+6. Flashcards and planner events are managed independently.
 
-Generated content is stored in the database as serialized JSON.
+---
 
-The frontend displays the guide and enables practice quizzes.
+## Setup and Installation
 
-Quiz attempts are saved and aggregated into performance statistics.
+Prerequisites:
+- Node.js (v18 or later recommended)
+- npm
 
-Flashcards and planner events can be managed independently.
+Backend setup:
+- Navigate to the server directory
+- Install dependencies
+- Configure environment variables
+- Start the development server
 
-Setup and Installation
-Prerequisites
+Environment variables:
+- PORT=5001
+- CLIENT_ORIGIN=http://localhost:5173
+- DATABASE_URL=file:./dev.db
+- OPENAI_API_KEY=your_key_here
 
-Node.js (v18 or later recommended)
+Frontend setup:
+- Navigate to the client directory
+- Install dependencies
+- Start the development server
 
-npm or yarn
+The frontend runs at http://localhost:5173 by default.
 
-Backend Setup
-cd server
-npm install
+---
 
+## API Overview
 
-Create a .env file:
+- POST /api/generate – Generate study guide from topic
+- POST /api/generate-from-pdf – Generate study guide from PDF
+- GET /api/guides – Retrieve guide history
+- GET /api/guides/:id – Retrieve a specific guide
+- POST /api/attempts – Save quiz results
+- GET /api/stats – Retrieve aggregated performance statistics
+- GET /api/flashcards – Manage flashcard decks and cards
+- GET /api/events – Manage planner events
 
-PORT=5001
-CLIENT_ORIGIN=http://localhost:5173
-DATABASE_URL="file:./dev.db"
-OPENAI_API_KEY=your_key_here
+---
 
+## Design Considerations
 
-Start the server:
+- Study guide content is stored as JSON strings for SQLite compatibility
+- Mock AI responses ensure full functionality without external dependencies
+- Backend routes are modular for scalability and maintainability
+- Authentication is intentionally minimal for development simplicity
 
-npm run dev
+---
 
-Frontend Setup
-cd client
-npm install
-npm run dev
+## Future Improvements
 
+- User authentication and authorization
+- PostgreSQL support with JSONB fields
+- OCR support for scanned PDFs
+- Background job processing for large uploads
+- Production-ready deployment configuration
 
-The frontend runs by default at http://localhost:5173.
+---
 
-Environment Variables
-Variable	Purpose
-PORT	API server port
-CLIENT_ORIGIN	Allowed CORS origin
-DATABASE_URL	Prisma database connection
-OPENAI_API_KEY	Enables real AI generation
-OPENAI_MODEL	Optional model override
-
-If OPENAI_API_KEY is not set, the application returns mock study guides so development can continue.
-
-API Overview
-
-POST /api/generate – Generate study guide from topic
-
-POST /api/generate-from-pdf – Generate study guide from PDF
-
-GET /api/guides – Retrieve guide history
-
-GET /api/guides/:id – Retrieve a specific guide
-
-POST /api/attempts – Save quiz results
-
-GET /api/stats – Aggregate performance statistics
-
-POST /api/flashcards – Manage flashcard decks and cards
-
-POST /api/events – Manage planner events
-
-Design Considerations
-
-Content is stored as JSON strings to ensure SQLite compatibility
-
-Mock AI responses allow full functionality without API keys
-
-User authentication is intentionally minimal for development simplicity
-
-Routes are modularized for scalability and clarity
-
-Future Improvements
-
-User authentication and authorization
-
-PostgreSQL support with JSONB fields
-
-Background job queue for long PDF processing
-
-OCR support for scanned PDFs
-
-Deployment-ready configuration
