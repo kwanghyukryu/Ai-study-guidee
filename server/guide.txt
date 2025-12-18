@@ -1,0 +1,288 @@
+Big picture
+
+Runtime & framework: Node.js + Express.
+
+Data layer: Prisma ORM talking to a SQLite file in dev (easy to swap to Postgres later).
+
+AI layer: OpenAI Chat Completions API (with a mock fallback if no API key is set).
+
+File processing: multer for uploads and pdf-parse for extracting text from PDFs.
+
+API surface: REST endpoints under /api/* for guides, quiz attempts, stats, flashcards, and planner events.
+
+Cross-origin: CORS is enabled so your Vite client (http://localhost:5173) can call the API.
+
+The server boots in src/index.js, mounts all route modules, and listens on :5001 by default.
+
+Startup & configuration
+Entry point (src/index.js)
+
+Loads env vars (dotenv.config()).
+
+Sets up CORS (defaults to CLIENT_ORIGIN=http://localhost:5173).
+
+Adds JSON body parsing (express.json({ limit: "2mb" })).
+
+Mounts each feature router:
+
+/api/generate → topic-based guide creation
+
+/api/generate-from-pdf → PDF-based guide creation
+
+/api/guides → history & retrieval
+
+/api/attempts → save quiz results
+
+/api/stats → aggregate stats
+
+/api/flashcards → decks & cards CRUD
+
+/api/events → planner events CRUD
+
+Global error handler that also understands Multer errors (file size, wrong type, etc.).
+
+Starts the HTTP server on process.env.PORT || 5001.
+
+Environment variables
+
+PORT – API port (default 5001)
+
+CLIENT_ORIGIN – allowed CORS origin(s)
+
+DATABASE_URL – Prisma connection string (SQLite file in dev)
+
+OPENAI_API_KEY – enables real LLM calls
+
+OPENAI_MODEL / OPENAI_BASE_URL – optional overrides for OpenAI
+
+If OPENAI_API_KEY is not set, the AI layer returns mock content so the app still works. That’s handy for dev—but it’s also why you’ll sometimes see the same “default-ish” text until you add a real key.
+
+Database access with Prisma
+Prisma client (src/db.js)
+
+Creates and exports a singleton PrismaClient for use across routes.
+
+Adds graceful shutdown hooks (disconnects on SIGINT/SIGTERM).
+
+Data model (conceptual)
+
+Your routes assume these models (names can vary slightly across your schema):
+
+User: { id, email, name, createdAt }
+
+StudyGuide: { id, userId, topic, level, content(string), createdAt }
+
+⚠️ content is stored as a JSON string for portability (SQLite doesn’t support JSON type). Routes parse it before sending to the client.
+
+Attempt: { id, userId, studyGuideId?, topic, score, total, createdAt }
+
+Deck: { id, userId, title, createdAt, updatedAt }
+
+Card: { id, deckId, front, back, createdAt }
+
+Event: { id, userId, title, description?, start, end, allDay }
+
+Seeding (prisma/seed.js)
+
+Upserts a demo user id=1 (demo@local) so dev flows “just work”.
+
+AI generation layer
+LLM abstraction (src/llm.js)
+
+Two exported functions:
+
+generateStudyGuide({ topic, level, questions })
+
+generateStudyGuideFromText({ title, level, questions, sourceText })
+
+What they do:
+
+If OPENAI_API_KEY is present:
+
+Call OpenAI Chat Completions (/chat/completions) with JSON mode (response_format: { type: "json_object" }), and a system prompt that asks for a strict JSON study guide: title, outline[], sections[], and a quiz[] of MCQs.
+
+Parse the returned JSON; if parsing fails, fall back to mock content.
+
+If no key:
+
+Return mock objects with the same structure (so app stays functional).
+
+Why “mock” matters: It keeps dev fast, but you’ll only get real topic-specific content when OPENAI_API_KEY is set. Otherwise the client will still show a guide/quiz—just generic.
+
+PDF ingestion
+PDF utility (src/pdf.js)
+
+Uses pdf-parse to pull extractable text from the uploaded PDF buffer.
+
+Normalizes newlines/whitespace to a clean string for prompting.
+
+Note: No OCR—image-only scans won’t yield text.
+
+Upload & generate from PDF (src/routes/generateFromPdf.js)
+
+Uses Multer with memoryStorage() (keeps file in RAM; no disk writes).
+
+Validates file type (PDF) and size (≤ 30 MB).
+
+Calls extractPdfText(buffer) → gets raw text.
+
+Calls generateStudyGuideFromText({ title, level, questions, sourceText }).
+
+Persists a StudyGuide row with content as a string.
+
+Responds with { guide } where content is already parsed as an object for the frontend.
+
+Topic-based guide creation
+Generate from topic (src/routes/generate.js)
+
+Validates body: { userId?, topic, level?, questions? } (Zod).
+
+Calls generateStudyGuide(...).
+
+Saves the StudyGuide row (content stringified).
+
+Returns { guide } with content parsed to an object.
+
+Guide retrieval & history
+Guides endpoints (src/routes/guides.js)
+
+POST /api/guides/generate – (alt path similar to /api/generate) calls OpenAI directly in this route. Same idea: strict JSON, save as string, respond parsed.
+
+GET /api/guides – list history (id/topic/level/createdAt), newest first. Used for the left-hand “History” in your UI.
+
+GET /api/guides/:id – fetch one guide and parse content string to an object.
+
+Tip: Because SQLite stores content as a string, the client must handle both cases:
+
+When a route returns parsed content (object) already
+
+When content might still be a string (some routes or older data).
+Your components already guard for both and parse if needed.
+
+Practice results & stats
+Saving attempts (src/routes/attempts.js)
+
+POST /api/attempts – accepts { userId?, studyGuideId?, topic, score, total }.
+
+Validates with Zod, writes an Attempt, returns { attempt }.
+
+Stats aggregator (src/routes/stats.js)
+
+GET /api/stats?userId=1
+
+Loads all Attempt rows for that user and computes:
+
+overall weighted average (sum scores / sum totals)
+
+topicStats array (average + count per topic)
+
+last30 time series (attempts within 30 days, each as { date, pct })
+
+Rounds to one decimal where appropriate.
+
+This powers your dashboard KPI tiles & charts.
+
+Flashcards
+Server (src/routes/flashcards.js)
+
+Decks
+
+GET /api/flashcards/decks?userId=1 – list decks (sorted by updatedAt desc).
+
+POST /api/flashcards/decks – create a deck { userId?, title }. Upserts the user if necessary.
+
+GET /api/flashcards/decks/:id – deck with cards included (ordered oldest→newest).
+
+Cards
+
+POST /api/flashcards/decks/:id/cards – add { front, back }.
+
+PATCH /api/flashcards/cards/:cardId – update front/back.
+
+DELETE /api/flashcards/cards/:cardId – delete.
+
+After adding/updating/deleting a card, the route touches the parent deck’s updatedAt so it sorts to the top.
+
+Planner (calendar)
+Server (src/routes/events.js)
+
+Overlap listing:
+
+GET /api/events?userId=1&from=ISO&to=ISO returns any event with start <= to and end >= from.
+
+CRUD:
+
+POST /api/events – create { title, start, end, description?, allDay? }
+
+PATCH /api/events/:id – partial update
+
+DELETE /api/events/:id – delete
+
+Validates ISO timestamps; also upserts the user for demo convenience.
+
+Request flows (concrete)
+1) Generate a guide from a topic
+
+Client POSTs /api/generate with { userId, topic, level, questions }.
+
+Route validates, calls llm.generateStudyGuide(...).
+
+Saves StudyGuide (content string) → responds with parsed content object.
+
+Client stores guide in state and optionally in localStorage for “Practice”.
+
+2) Generate a guide from a PDF
+
+Client POSTs /api/generate-from-pdf with FormData:
+
+file (binary), userId, level, questions, optional topic.
+
+Server extracts text (pdf-parse) → calls generateStudyGuideFromText(...).
+
+Saves & returns { guide } with parsed content.
+
+3) Practice + save results
+
+Client renders a quiz from the guide’s content.quiz (your UI also normalizes alternate quiz shapes).
+
+On submit, client computes { score, total } and POSTs /api/attempts.
+
+Later, GET /api/stats rolls those attempts up into KPIs and charts.
+
+Error handling & resilience
+
+Validation: generate.js and attempts.js use Zod to enforce request shapes. Others do plain checks but still return 400 on bad input.
+
+Uploads: Multer throws typed errors (size/type). The global error handler maps them to friendly messages.
+
+OpenAI failures: If the API call fails/parsing fails/no key is set → fallback mock guide. That prevents the whole flow from breaking during dev.
+
+DB safety: Many routes upsert a minimal User so you don’t need auth wired in to test features.
+
+Content parsing: guides.js parses JSON before responding; client components still double-check and parse if a string slips through.
+
+Scaling tips (when you’re ready)
+
+Move from SQLite → Postgres.
+
+Update DATABASE_URL, run prisma migrate.
+
+You can then switch StudyGuide.content to a real JSONB column and drop the stringification.
+
+Authentication.
+
+Replace the hard-coded userId=1 with your auth provider (JWT, session, etc.).
+
+Drop the upsert “demo user” behavior and enforce foreign keys.
+
+Rate limiting & abuse protection.
+
+Add a simple token bucket on /api/generate*.
+
+Observability.
+
+Add request logging (pino/morgan) and basic metrics.
+
+Background jobs.
+
+For big PDFs or long generations, you can enqueue to a worker (BullMQ) and poll status.
