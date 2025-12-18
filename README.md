@@ -103,28 +103,84 @@ server/
 
 ## Setup and Installation
 
-Prerequisites:
-- Node.js (v18 or later recommended)
+HOW TO START THE PROJECT
+
+This project has two parts that must run at the same time:
+1. Backend server (Node.js + Express)
+2. Frontend client (React + Vite)
+
+You must start the backend first, then the frontend.
+
+--------------------------------------------------
+
+1. PREREQUISITES
+
+Make sure the following are installed:
+
+- Node.js (version 18 or newer recommended)
 - npm
 
-Backend setup:
-- Navigate to the server directory
-- Install dependencies
-- Configure environment variables
-- Start the development server
+Check versions:
 
-Environment variables:
-- PORT=5001
-- CLIENT_ORIGIN=http://localhost:5173
-- DATABASE_URL=file:./dev.db
-- OPENAI_API_KEY=your_key_here
+node -v
+npm -v
 
-Frontend setup:
-- Navigate to the client directory
-- Install dependencies
-- Start the development server
+--------------------------------------------------
 
-The frontend runs at http://localhost:5173 by default.
+2. START THE BACKEND SERVER
+
+Step 1: Navigate to the server directory
+
+cd server
+
+Step 2: Install dependencies
+
+npm install
+
+Step 3: Create environment variables
+
+Create a file named .env inside the server directory with the following contents:
+
+PORT=5001
+CLIENT_ORIGIN=http://localhost:5173
+DATABASE_URL="file:./dev.db"
+OPENAI_API_KEY=your_key_here
+
+Notes:
+- OPENAI_API_KEY is optional.
+- If it is not set, the app will use mock data.
+
+Step 4: Start the backend server
+
+npm run dev
+
+If successful, you should see:
+
+API ready on :5001
+
+The backend will now be running at:
+http://localhost:5001
+
+--------------------------------------------------
+
+3. START THE FRONTEND CLIENT
+
+Open a new terminal window.
+
+Step 1: Navigate to the client directory
+
+cd client
+
+Step 2: Install dependencies
+
+npm install
+
+Step 3: Start the frontend development server
+
+npm run dev
+
+The frontend will be available at:
+http://localhost:5173
 
 ---
 
