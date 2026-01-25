@@ -39,12 +39,29 @@ const app = express();
  */
 
 // CORS: allow client (default http://localhost:5173) to call API
+const normalizeOrigin = (s) => s.trim().replace(/\/$/, ""); // trim + remove trailing "/"
+
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(","),
-    credentials: false, // not using cookies
+    origin: (origin, cb) => {
+      // allow server-to-server / curl / render health checks (no Origin header)
+      if (!origin) return cb(null, true);
+
+      const o = normalizeOrigin(origin);
+
+      if (allowedOrigins.includes(o)) return cb(null, true);
+
+      return cb(new Error(`CORS blocked origin: ${origin}`));
+    },
+    credentials: false,
   })
 );
+
 
 // Parse JSON bodies up to 2 MB
 app.use(express.json({ limit: "2mb" }));
